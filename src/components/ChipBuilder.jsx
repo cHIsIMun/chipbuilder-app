@@ -7,17 +7,23 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   Position,
+  useReactFlow,
+  ReactFlowProvider,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import NotNode from './nodes/NotNode';
 import CustomChipNode from './nodes/CustomChipNode';
+import TextNode from './nodes/TextNode';
 import SidebarInput from './SidebarInput';
 import SidebarOutput from './SidebarOutput';
 import Notification from './Notification';
+import LogicGuide from './LogicGuide';
+import { GATES_DATABASE } from './logic/gates';
 
 const nodeTypes = {
   not: NotNode,
   customChip: CustomChipNode,
+  text: TextNode,
 };
 
 const initialNodes = [];
@@ -199,9 +205,10 @@ function topologicalSort(nodes, edges) {
   return sorted.map(id => nodes.find(n => n.id === id));
 }
 
-export default function ChipBuilder() {
+function ChipBuilderComponent() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const reactFlowInstance = useReactFlow();
 
   const [inputs, setInputs] = useState([]);
   const [outputs, setOutputs] = useState([]);
@@ -217,6 +224,10 @@ export default function ChipBuilder() {
   const [nodeValues, setNodeValues] = useState({});
   const [hasCycleWarning, setHasCycleWarning] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [showTruthTable, setShowTruthTable] = useState(false);
+  const [truthTableData, setTruthTableData] = useState({ headers: [], rows: [] });
+  const [identifiedGate, setIdentifiedGate] = useState(null);
+  const [showGuide, setShowGuide] = useState(false);
 
   const showNotification = useCallback((message, type = 'info') => {
     setNotification({ message, type });
@@ -504,9 +515,14 @@ export default function ChipBuilder() {
 
   // Adiciona saída
   const addOutput = () => {
-    const existingLabels = outputs.map(o => parseInt(o.label, 10)).filter(n => !isNaN(n));
-    const newLabelNumber = existingLabels.length > 0 ? Math.max(...existingLabels) + 1 : 1;
-    const newLabel = newLabelNumber.toString();
+    const existingSNumbers = outputs
+      .map(o => o.label)
+      .filter(label => typeof label === 'string' && label.startsWith('S'))
+      .map(label => parseInt(label.substring(1), 10))
+      .filter(n => !isNaN(n));
+
+    const newLabelNumber = existingSNumbers.length > 0 ? Math.max(...existingSNumbers) + 1 : 1;
+    const newLabel = `S${newLabelNumber}`;
 
     const id = `output-${Date.now()}`;
     const newY = outputs.length > 0 ? Math.max(...nodes.filter(n => n.type === 'output').map(n => n.position.y)) + 60 : 80;
@@ -553,6 +569,24 @@ export default function ChipBuilder() {
       },
     ]);
   };
+
+  const addTextNode = useCallback((position) => {
+    const id = `text-${Date.now()}`;
+    const newNode = {
+      id,
+      type: 'text',
+      position,
+      data: {
+        text: 'Seu texto',
+        fontSize: 14,
+        color: '#1f2937',
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+        textDecoration: 'none',
+      },
+    };
+    setNodes((nds) => [...nds, newNode]);
+  }, [setNodes]);
 
   // Salva chip customizado
   const openSaveChipModal = () => {
@@ -650,6 +684,97 @@ export default function ChipBuilder() {
     onNodesChange(changes);
   }, [onNodesChange]);
 
+  useEffect(() => {
+    // Referência para o handler do evento
+    const handleDoubleClick = (event) => {
+      // Verificar se o clique foi no painel (não em um nó)
+      if (event.target.classList.contains('react-flow__pane')) {
+        const position = reactFlowInstance.screenToFlowPosition({
+          x: event.clientX,
+          y: event.clientY,
+        });
+        
+        console.log('Duplo clique detectado, criando nó de texto...', position);
+        addTextNode(position);
+      }
+    };
+
+    // Obter o contêiner do ReactFlow após a montagem
+    const container = document.querySelector('.react-flow');
+    if (container) {
+      container.addEventListener('dblclick', handleDoubleClick);
+      
+      // Limpar o event listener quando o componente for desmontado
+      return () => {
+        container.removeEventListener('dblclick', handleDoubleClick);
+      };
+    }
+  }, [reactFlowInstance, addTextNode]);
+
+  const identifyGate = (inputs, outputs, rows) => {
+    // Só tenta identificar portas com 1 saída
+    if (outputs.length !== 1) {
+      return null;
+    }
+
+    const outputColumn = rows.map(row => row[inputs.length]);
+
+    const foundGate = GATES_DATABASE.find(gate => {
+      if (gate.inputs !== inputs.length) {
+        return false;
+      }
+      // Compara a coluna de saída da tabela gerada com a da base de dados
+      return JSON.stringify(gate.truthTable) === JSON.stringify(outputColumn);
+    });
+
+    return foundGate || null;
+  };
+
+  const generateTruthTable = () => {
+    const logicalInputs = inputs.filter(i => i.type !== 'divider');
+    const logicalOutputs = outputs.filter(o => o.type !== 'divider');
+
+    if (logicalInputs.length === 0) {
+      showNotification('Adicione pelo menos uma entrada para gerar a tabela verdade.', 'warning');
+      return;
+    }
+    if (logicalInputs.length > 10) {
+      showNotification('A tabela verdade é limitada a 10 entradas para evitar lentidão excessiva.', 'warning');
+      return;
+    }
+    if (hasCycle(nodes, edges)) {
+      showNotification('Não é possível gerar a tabela para um circuito com ciclo!', 'error');
+      return;
+    }
+
+    const headers = [
+      ...logicalInputs.map(i => i.label),
+      ...logicalOutputs.map(o => o.label)
+    ];
+    const rows = [];
+    const numCombinations = 1 << logicalInputs.length;
+
+    const currentChip = {
+      nodes: JSON.parse(JSON.stringify(nodes)),
+      edges: JSON.parse(JSON.stringify(edges)),
+      inputs: logicalInputs.length,
+      outputs: logicalOutputs.length,
+    };
+
+    for (let i = 0; i < numCombinations; i++) {
+      const inputValues = [];
+      for (let j = 0; j < logicalInputs.length; j++) {
+        inputValues[j] = (i >> (logicalInputs.length - 1 - j)) & 1;
+      }
+      const outputValues = simulateChip(currentChip, inputValues.map(Boolean), savedChips);
+      rows.push([...inputValues, ...outputValues.map(v => v ? 1 : 0)]);
+    }
+
+    setTruthTableData({ headers, rows, inputCount: logicalInputs.length });
+    setIdentifiedGate(identifyGate(logicalInputs, logicalOutputs, rows));
+    setShowTruthTable(true);
+  };
+
   const clearCanvas = () => {
     if (nodes.length > 0 || edges.length > 0) {
       if (window.confirm('Tem certeza que deseja limpar o canvas?')) {
@@ -663,12 +788,32 @@ export default function ChipBuilder() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="flex flex-col h-screen bg-white overflow-hidden">
       {/* Barra superior fixa com chips salvos */}
-      <div className="w-full bg-white shadow-md px-4 py-3 z-20">
+      <div className="w-full bg-white shadow-md px-4 py-3 z-20 flex-shrink-0">
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-xl font-bold text-gray-800">ChipBuilder</h1>
           <div className="flex gap-2">
+            <button
+              onClick={() => setShowGuide(true)}
+              className="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-md 
+                        transition-colors flex items-center gap-1 text-sm font-medium"
+              title="Guia de Lógica Digital"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+              </svg>
+              Guia
+            </button>
+            <button
+              onClick={generateTruthTable}
+              className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-md 
+                        transition-colors flex items-center gap-1 text-sm font-medium"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v18H3z"/><path d="M21 9H3"/><path d="M21 15H3"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
+              Tabela Verdade
+            </button>
             <button 
               onClick={openSaveChipModal} 
               className="px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-md 
@@ -700,7 +845,7 @@ export default function ChipBuilder() {
         
         <div className="flex gap-6">
           <div className="flex flex-col">
-            <span className="text-xs font-medium text-gray-500 mb-1">Portas Lógicas</span>
+            <span className="text-xs font-medium text-gray-500 mb-1">Componentes</span>
             <div className="flex gap-3">
               <button
                 className="flex flex-col items-center group"
@@ -746,7 +891,7 @@ export default function ChipBuilder() {
         </div>
       </div>
 
-      <div className="flex flex-1">
+      <div className="flex flex-1 min-h-0">
         {/* Painel lateral esquerdo */}
         <SidebarInput
           inputs={inputs}
@@ -757,6 +902,71 @@ export default function ChipBuilder() {
           onAddDivider={addInputDivider}
           onRemoveItem={(id) => removeSidebarItem(id, 'input')}
         />
+
+        {/* Modal Tabela Verdade */}
+        {showTruthTable && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm">
+            <div className="bg-white rounded-lg shadow-lg p-6 max-w-[90vw] max-h-[90vh] flex flex-col transform transition-all">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-gray-800">Tabela Verdade</h2>
+                <button onClick={() => setShowTruthTable(false)} className="text-gray-500 hover:text-gray-800">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </div>
+              <div className="flex gap-6">
+                <div className="overflow-auto">
+                  <table className="min-w-full divide-y divide-gray-200 border border-gray-300">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        {truthTableData.headers.map((header, index) => (
+                          <th
+                            key={index}
+                            scope="col"
+                            className={`px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider
+                                        ${index === truthTableData.inputCount - 1 ? 'border-r-2 border-gray-400' : ''}`}
+                          >
+                            {header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {truthTableData.rows.map((row, rowIndex) => (
+                        <tr key={rowIndex} className="hover:bg-gray-50">
+                          {row.map((cell, cellIndex) => (
+                            <td
+                              key={cellIndex}
+                              className={`px-4 py-2 whitespace-nowrap text-sm text-center font-mono
+                                          ${cellIndex === truthTableData.inputCount - 1 ? 'border-r-2 border-gray-400' : ''}
+                                          ${cell === 1 ? 'text-blue-600 font-bold' : 'text-gray-500'}`}
+                            >
+                              {cell}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg w-64">
+                  {identifiedGate ? (
+                    <>
+                      <h3 className="text-lg font-semibold text-gray-700 mb-2">Porta Lógica Identificada</h3>
+                      <div className="w-48 h-24 text-gray-800" dangerouslySetInnerHTML={{ __html: identifiedGate.symbol }} />
+                      <p className="mt-2 text-2xl font-bold text-gray-900">{identifiedGate.name}</p>
+                    </>
+                  ) : (
+                    <div className="text-center text-gray-500">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                      <h3 className="text-md font-semibold">Porta não identificada</h3>
+                      <p className="text-xs mt-1">O circuito atual não corresponde a uma porta lógica básica conhecida.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Modal para salvar chip */}
         {showModal && (
@@ -837,9 +1047,12 @@ export default function ChipBuilder() {
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             nodeTypes={nodeTypes}
-            panOnDrag
+            panOnDrag={1}
             zoomOnScroll
-   straight   >
+            zoomOnDoubleClick={false}
+            selectionOnDrag={false}
+            className="nodrag"
+          >
             <Background gap={20} size={1} color="#e5e7eb" />
             <Controls />
             <MiniMap />
@@ -857,6 +1070,12 @@ export default function ChipBuilder() {
         />
       </div>
 
+      {/* Modal do Guia de Lógica */}
+      <LogicGuide 
+        isOpen={showGuide} 
+        onClose={() => setShowGuide(false)} 
+      />
+
       {/* Componente de notificação */}
       {notification && (
         <Notification
@@ -866,5 +1085,13 @@ export default function ChipBuilder() {
         />
       )}
     </div>
+  );
+}
+
+export default function ChipBuilder() {
+  return (
+    <ReactFlowProvider>
+      <ChipBuilderComponent />
+    </ReactFlowProvider>
   );
 }
