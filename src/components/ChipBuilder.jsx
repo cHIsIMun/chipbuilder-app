@@ -401,22 +401,39 @@ export default function ChipBuilder() {
     }, 50);
     
     return () => clearTimeout(timeoutId);
-  }, [nodes, edges, inputs.map(i => i.active).join(','), savedChips, calculateCircuit]);
+  }, [nodes, edges, inputs, outputs, calculateCircuit]);
 
   // Adiciona entrada
   const addInput = () => {
-    const id = `input-${inputs.length + 1}`;
+    const existingLabels = new Set(inputs.map(i => i.label));
+    let newLabel = '';
+    // Encontra a primeira letra do alfabeto (A-Z) que não está em uso
+    for (let i = 0; i < 26; i++) {
+      const char = String.fromCharCode(65 + i);
+      if (!existingLabels.has(char)) {
+        newLabel = char;
+        break;
+      }
+    }
+    // Fallback caso todas as letras já estejam em uso
+    if (!newLabel) {
+      newLabel = `In-${inputs.length + 1}`;
+    }
+
+    const id = `input-${Date.now()}`;
+    const newY = inputs.length > 0 ? Math.max(...nodes.filter(n => n.type === 'input').map(n => n.position.y)) + 60 : 80;
+
     setInputs((prev) => [
       ...prev,
-      { id, label: `Entrada ${inputs.length + 1}`, active: false },
+      { id, label: newLabel, active: false },
     ]);
     setNodes((nds) => [
       ...nds,
       {
         id,
         type: 'input',
-        position: { x: 10, y: 80 + inputs.length * 40 },
-        data: { label: `Entrada ${inputs.length + 1}`, active: false },
+        position: { x: 10, y: newY },
+        data: { label: newLabel, active: false },
         sourcePosition: Position.Right,
         style: {
           width: 38,
@@ -469,20 +486,42 @@ export default function ChipBuilder() {
     ));
   };
 
+  const addInputDivider = () => {
+    setInputs(prev => [...prev, { id: `divider-${Date.now()}`, type: 'divider' }]);
+  };
+
+  const addOutputDivider = () => {
+    setOutputs(prev => [...prev, { id: `divider-${Date.now()}`, type: 'divider' }]);
+  };
+
+  const removeSidebarItem = (id, type) => {
+    if (type === 'input') {
+      setInputs(prev => prev.filter(item => item.id !== id));
+    } else if (type === 'output') {
+      setOutputs(prev => prev.filter(item => item.id !== id));
+    }
+  };
+
   // Adiciona saída
   const addOutput = () => {
-    const id = `output-${outputs.length + 1}`;
+    const existingLabels = outputs.map(o => parseInt(o.label, 10)).filter(n => !isNaN(n));
+    const newLabelNumber = existingLabels.length > 0 ? Math.max(...existingLabels) + 1 : 1;
+    const newLabel = newLabelNumber.toString();
+
+    const id = `output-${Date.now()}`;
+    const newY = outputs.length > 0 ? Math.max(...nodes.filter(n => n.type === 'output').map(n => n.position.y)) + 60 : 80;
+
     setOutputs((prev) => [
       ...prev,
-      { id, label: `Saída ${outputs.length + 1}`, active: false },
+      { id, label: newLabel, active: false },
     ]);
     setNodes((nds) => [
       ...nds,
       {
         id,
         type: 'output',
-        position: { x: CANVAS_WIDTH - 60, y: 80 + outputs.length * 40 },
-        data: { label: `Saída ${outputs.length + 1}`, active: false },
+        position: { x: CANVAS_WIDTH - 60, y: newY },
+        data: { label: newLabel, active: false },
         targetPosition: Position.Left,
         style: {
           width: 38,
@@ -534,8 +573,10 @@ export default function ChipBuilder() {
       return;
     }
     
-    const inputCount = inputs.length;
-    const outputCount = outputs.length;
+    const logicalInputs = inputs.filter(i => i.type !== 'divider');
+    const logicalOutputs = outputs.filter(o => o.type !== 'divider');
+    const inputCount = logicalInputs.length;
+    const outputCount = logicalOutputs.length;
 
     const newChips = [
       ...savedChips,
@@ -712,6 +753,9 @@ export default function ChipBuilder() {
           onAddInput={addInput}
           onToggleInput={toggleInput}
           onRenameInput={onRenameInput}
+          onReorder={setInputs}
+          onAddDivider={addInputDivider}
+          onRemoveItem={(id) => removeSidebarItem(id, 'input')}
         />
 
         {/* Modal para salvar chip */}
@@ -795,7 +839,7 @@ export default function ChipBuilder() {
             nodeTypes={nodeTypes}
             panOnDrag
             zoomOnScroll
-          >
+   straight   >
             <Background gap={20} size={1} color="#e5e7eb" />
             <Controls />
             <MiniMap />
@@ -807,6 +851,9 @@ export default function ChipBuilder() {
           outputs={outputs} 
           onAddOutput={addOutput} 
           onRenameOutput={onRenameOutput} 
+          onReorder={setOutputs}
+          onAddDivider={addOutputDivider}
+          onRemoveItem={(id) => removeSidebarItem(id, 'output')}
         />
       </div>
 
