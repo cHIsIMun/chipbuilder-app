@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
 const GUIDE_PAGES = [
   {
@@ -221,6 +222,8 @@ export default function LogicGuide({ isOpen, onClose }) {
               <div className="prose prose-lg max-w-none">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
+
+                  rehypePlugins={[rehypeRaw]}
                   components={{
                     h1: ({children}) => <h1 className="text-3xl font-bold text-gray-900 mb-6 border-b border-gray-300 pb-3">{children}</h1>,
                     h2: ({children}) => <h2 className="text-2xl font-semibold text-gray-800 mb-4 mt-8">{children}</h2>,
