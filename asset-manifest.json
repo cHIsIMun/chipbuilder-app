@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/chipbuilder-app/static/css/main.064d61cb.css",
-    "main.js": "/chipbuilder-app/static/js/main.502e6701.js",
+    "main.js": "/chipbuilder-app/static/js/main.36dfa263.js",
     "static/js/453.bc48e30f.chunk.js": "/chipbuilder-app/static/js/453.bc48e30f.chunk.js",
     "index.html": "/chipbuilder-app/index.html",
     "main.064d61cb.css.map": "/chipbuilder-app/static/css/main.064d61cb.css.map",
-    "main.502e6701.js.map": "/chipbuilder-app/static/js/main.502e6701.js.map",
+    "main.36dfa263.js.map": "/chipbuilder-app/static/js/main.36dfa263.js.map",
     "453.bc48e30f.chunk.js.map": "/chipbuilder-app/static/js/453.bc48e30f.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.064d61cb.css",
-    "static/js/main.502e6701.js"
+    "static/js/main.36dfa263.js"
   ]
 }
