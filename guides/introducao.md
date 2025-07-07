@@ -5,6 +5,7 @@ As portas lógicas são os blocos fundamentais dos circuitos digitais. Elas impl
 ## Portas Básicas
 
 ### NOT (Inversor)
+
 - **Função**: Inverte o valor de entrada
 - **Símbolo**: ¬A ou A'
 - **Representação**:
@@ -16,6 +17,7 @@ As portas lógicas são os blocos fundamentais dos circuitos digitais. Elas impl
   | 1 | 0 |
 
 ### AND (E)
+
 - **Função**: Saída é 1 apenas quando **todas** as entradas são 1
 - **Símbolo**: A ∧ B ou A · B
 - **Representação**:
@@ -23,12 +25,13 @@ As portas lógicas são os blocos fundamentais dos circuitos digitais. Elas impl
 - **Tabela Verdade**:
   | A | B | A∧B |
   |---|---|-----|
-  | 0 | 0 | 0   |
-  | 0 | 1 | 0   |
-  | 1 | 0 | 0   |
-  | 1 | 1 | 1   |
+  | 0 | 0 | 0 |
+  | 0 | 1 | 0 |
+  | 1 | 0 | 0 |
+  | 1 | 1 | 1 |
 
 ### OR (OU)
+
 - **Função**: Saída é 1 quando **pelo menos uma** entrada é 1
 - **Símbolo**: A ∨ B ou A + B
 - **Representação**:
@@ -36,20 +39,22 @@ As portas lógicas são os blocos fundamentais dos circuitos digitais. Elas impl
 - **Tabela Verdade**:
   | A | B | A∨B |
   |---|---|-----|
-  | 0 | 0 | 0   |
-  | 0 | 1 | 1   |
-  | 1 | 0 | 1   |
-  | 1 | 1 | 1   |
+  | 0 | 0 | 0 |
+  | 0 | 1 | 1 |
+  | 1 | 0 | 1 |
+  | 1 | 1 | 1 |
 
 ## Conceitos Importantes
 
 ### Dualidade entre AND e OR
+
 Observe como AND e OR são complementares:
+
 - **AND**: Só é verdadeiro quando TUDO é verdadeiro
 - **OR**: Só é falso quando TUDO é falso
 
-
 ### Próximos Passos
+
 - Aprenda sobre as **Leis de De Morgan** para entender como converter entre AND e OR
 - Explore as **Portas Derivadas** que combinam operações básicas
 - Pratique com **Exercícios** no ChipBuilder
