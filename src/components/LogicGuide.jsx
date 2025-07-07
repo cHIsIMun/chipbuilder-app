@@ -43,33 +43,34 @@ export default function LogicGuide({ isOpen, onClose }) {
   const contentRef = useRef(null);
 
   useEffect(() => {
-    const fetchAllGuides = async () => {
-      if (isOpen) {
-        setLoading(true);
-        const contentPromises = GUIDE_PAGES.map(async (page) => {
-          try {
-            const response = await fetch(`/guides/${page.file}`);
-            const text = await response.text();
-            return { id: page.id, content: text };
-          } catch (error) {
-            console.error(`Falha ao carregar o guia: ${page.file}`, error);
-            return { id: page.id, content: 'Erro ao carregar este guia.' };
-          }
-        });
+    if (!isOpen) return;
 
-        const allContent = await Promise.all(contentPromises);
-        const contentMap = allContent.reduce((acc, pageContent) => {
-          acc[pageContent.id] = pageContent.content;
-          return acc;
-        }, {});
-
-        setAllGuidesContent(contentMap);
+    const fetchContent = async () => {
+      setLoading(true);
+      try {
+        const page = GUIDE_PAGES.find(p => p.id === currentPage);
+        const response = await fetch(`${process.env.PUBLIC_URL}/guides/${page.file}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const text = await response.text();
+        setAllGuidesContent(prevContent => ({
+          ...prevContent,
+          [page.id]: text,
+        }));
+      } catch (error) {
+        console.error("Failed to fetch guide:", error);
+        setAllGuidesContent(prevContent => ({
+          ...prevContent,
+          [currentPage]: `Erro ao carregar o guia. Por favor, tente novamente.`,
+        }));
+      } finally {
         setLoading(false);
       }
     };
 
-    fetchAllGuides();
-  }, [isOpen]);
+    fetchContent();
+  }, [currentPage, isOpen]);
 
   useEffect(() => {
     if (contentRef.current) {
