@@ -1,70 +1,60 @@
-# Getting Started with Create React App
+# chipbuilder-app
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+🇧🇷 Português | 🇺🇸 [English](README.en.md)
 
-## Available Scripts
+> Simulador visual de circuitos lógicos digitais: construa, simule e componha chips a partir de portas básicas, com tabela-verdade automática.
 
-In the project directory, you can run:
+## Visão geral
 
-### `npm start`
+**ChipBuilder** é um simulador web interativo de **circuitos lógicos digitais**. Em um canvas *drag-and-drop*, você conecta entradas, saídas e portas lógicas, e o circuito é **avaliado em tempo real**. Circuitos podem ser salvos como **chips reutilizáveis** e compostos hierarquicamente em circuitos maiores — a mesma ideia de construir lógica complexa a partir de blocos simples. É uma ferramenta educacional para lógica booleana e eletrônica digital.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+🔗 Publicado via GitHub Pages: https://chisimun.github.io/chipbuilder-app
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Funcionalidades
 
-### `npm test`
+- **Editor visual de nós** (ReactFlow) com entradas (A–Z), saídas (S1, S2…) e a porta primitiva NOT.
+- **Simulação em tempo real** — recalcula o circuito ao mudar entradas ou topologia; arestas mudam de cor conforme o valor lógico.
+- **Detecção de ciclos** (DFS) e **ordenação topológica** (Kahn) — impede realimentação inválida.
+- **Tabela-verdade automática** para até 10 entradas (2ⁿ combinações).
+- **Identificação de portas** — compara a tabela-verdade do circuito com 19 portas padrão (AND, OR, NAND, NOR, XOR, XNOR e variantes de 3–4 entradas).
+- **Chips customizados** — salve um circuito como chip nomeado e colorido, e reutilize-o (composição até profundidade 100).
+- **Persistência** automática no `localStorage`.
+- **Guia de lógica digital** embutido (markdown) e sistema de notificações.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Stack
 
-### `npm run build`
+React 19 · ReactFlow · Tailwind CSS · lucide-react · react-markdown · Create React App.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Como executar
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```bash
+npm install
+npm start          # http://localhost:3000
+# build + deploy GitHub Pages:
+npm run build && npm run deploy
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Estrutura
 
-### `npm run eject`
+```
+src/
+├── components/
+│   ├── ChipBuilder.jsx     # componente raiz: simulação, estado, conexões, tabela-verdade
+│   ├── SidebarInput.jsx    # entradas arrastáveis
+│   ├── SidebarOutput.jsx   # saídas
+│   ├── LogicGuide.jsx      # guia educacional (markdown)
+│   ├── Notification.jsx    # toasts
+│   ├── nodes/              # NotNode, CustomChipNode, TextNode
+│   └── logic/gates.js      # 19 portas padrão (tabelas-verdade)
+└── styles/theme.js
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Funções centrais: `calculateCircuit()` (avalia a topologia), `simulateChip()` (recursiva, para chips compostos), `hasCycle()` (DFS).
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Estado do projeto
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+Funcional e em uso (publicado no GitHub Pages). Sem testes automatizados.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## Licença
 
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Este projeto ainda não declara uma licença; até que uma seja adicionada, todos os direitos são reservados ao autor.
